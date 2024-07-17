@@ -7,9 +7,27 @@ struct E2ETest1Document: Encodable & Decodable {
 
 @available(macOS 12.0, *)
 final class oramacloud_clientTests: XCTestCase {
+    func testEncodeSearchQuery() throws {
+        let clientParams = OramaClientParams(endpoint: "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd", apiKey: "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx")
+        let orama = OramaClient(params: clientParams)
+
+        let searchParams = ClientSearchParams(
+            term: "German",
+            mode: SearchMode.fulltext,
+            limit: 10,
+            offset: nil,
+            returning: nil,
+            facets: nil
+        )
+
+        let encodedSearchQuery = try orama.encodeSearchQuery(query: searchParams, version: "123", id: "456")
+
+        XCTAssertNotNil(encodedSearchQuery)
+    }
+
     func testE2ESearch() async throws {
         let clientParams = OramaClientParams(endpoint: "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd", apiKey: "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx")
-        let oramaClient = OramaClient(params: clientParams)
+        let orama = OramaClient(params: clientParams)
 
         let searchParams = ClientSearchParams(
             term: "German",
@@ -31,7 +49,7 @@ final class oramacloud_clientTests: XCTestCase {
                 let responseData = String(data: data, encoding: .utf8)
                 print("Response Data: \(responseData ?? "No response data")")
                 
-                let searchResults: SearchResults<E2ETest1Document> = try await oramaClient.search(query: searchParams)
+                let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: searchParams)
                 print(searchResults)
                 XCTAssertGreaterThan(searchResults.count, 0)
                 XCTAssertGreaterThan(searchResults.elapsed.raw, 0)

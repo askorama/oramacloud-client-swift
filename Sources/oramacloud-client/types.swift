@@ -60,9 +60,18 @@ struct SearchResults<T> : Encodable, Decodable where T : Encodable & Decodable {
 }
 
 struct SearchRequestPayload: Encodable {
-  let q: ClientSearchParams
+  let q: Data
   let version: String
   let id: String
+
+  func toDictionary() throws -> [String: Any] {
+    let data = try JSONEncoder().encode(self)
+
+    guard let jsonObject = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any] else {
+      throw NSError(domain: "Invalid JSON Object", code: 1, userInfo: nil)
+    }
+    return jsonObject
+  }
 }
 
 // ======================== FACETS TYPES ========================
