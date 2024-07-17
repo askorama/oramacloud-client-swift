@@ -2,11 +2,35 @@ import Foundation
 
 typealias JSObject<T: Decodable & Encodable> = [String: T]
 
+extension Encodable {
+  func toDictionary() throws -> [String: Any] {
+    let data = try JSONEncoder().encode(self)
+    let jsonObject = try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed)
+    
+    guard let dictionary = jsonObject as? [String: Any] else {
+      throw NSError()
+    }
+
+    return dictionary
+  }
+}
+
+extension Dictionary {
+  func percentEscaped() -> String {
+    return self.map { (key, value) in
+      let escapedKey = "\(key)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+      let escapedValue = "\(value)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+      return "\(escapedKey)=\(escapedValue)"
+    }.joined(separator: "&")
+  }
+}
+
 // ======================== CLIENT TYPES ========================
 
 struct OramaClientParams: Encodable, Decodable {
-  let apiKey: String
   let endpoint: String
+  let apiKey: String
 }
 
 enum SearchMode: String, Encodable, Decodable {
@@ -33,6 +57,12 @@ struct SearchResults<T> : Encodable, Decodable where T : Encodable & Decodable {
   let hits: [Hit<T>]
   var elapsed: Elapsed
   // @todo: add support for facets
+}
+
+struct SearchRequestPayload: Encodable {
+  let q: ClientSearchParams
+  let version: String
+  let id: String
 }
 
 // ======================== FACETS TYPES ========================
