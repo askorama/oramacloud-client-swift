@@ -5,10 +5,13 @@ struct E2ETest1Document: Encodable & Decodable {
     let breed: String
 }
 
+let e2eEndpoint = "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd"
+let e2eApiKey = "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx"
+
 @available(macOS 12.0, *)
 final class oramacloud_clientTests: XCTestCase {
     func testEncodeSearchQuery() throws {
-        let clientParams = OramaClientParams(endpoint: "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd", apiKey: "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx")
+        let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
         let orama = OramaClient(params: clientParams)
 
         let searchParams = ClientSearchParams(
@@ -26,7 +29,7 @@ final class oramacloud_clientTests: XCTestCase {
     }
 
     func testE2ESearch() async throws {
-        let clientParams = OramaClientParams(endpoint: "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd", apiKey: "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx")
+        let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
         let orama = OramaClient(params: clientParams)
 
         let searchParams = ClientSearchParams(
@@ -41,7 +44,7 @@ final class oramacloud_clientTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Async search completes")
 
         Task {
-            do {                
+            do {
                 let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: searchParams)
 
                 XCTAssertGreaterThan(searchResults.count, 0)

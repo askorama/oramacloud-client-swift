@@ -1,12 +1,12 @@
 import Foundation
 
-@available(macOS 12.0, *)
+@available(macOS 13.0, *)
 final class OramaClient {
   private let id: String
   private let apiKey: String
   private let endpoint: String
+  private let debouncer = Debouncer()
 
-  private var searchDebounceTimer: Timer?
   private var searchRequestCounter: Int = 0 
 
   init(params: OramaClientParams) {
@@ -15,15 +15,34 @@ final class OramaClient {
     self.endpoint = params.endpoint
   }
 
-  public func search<T: Encodable & Decodable>(query: ClientSearchParams) async throws -> SearchResults<T> {
-    // let concurrentRequestNumber = (self.searchRequestCounter += 1)
+  public func search<T: Encodable & Decodable>(query: ClientSearchParams, config: SearchRequestConfig? = SearchRequestConfig(debounce: nil)) async throws -> SearchResults<T> {
+    let shouldDebounce = config?.debounce != nil && (config?.debounce ?? 0) > 0
 
+    if shouldDebounce {
+      return try await withCheckedThrowingContinuation { continuation in
+        debouncer.debounce(interval: .milliseconds(Int64(config?.debounce ?? 0))) {
+          Task {
+            do {
+              let result = try await self.performSearch(query: query) as SearchResults<T>
+              continuation.resume(returning: result)
+            } catch {
+              continuation.resume(throwing: error)
+            }
+          }
+        }
+      }
+    } else {
+      return try await performSearch(query: query)
+    }
+  }
+
+  private func performSearch<T: Encodable & Decodable>(query: ClientSearchParams) async throws -> SearchResults<T> {
     guard let oramaEndpointURL = URL(string: "\(self.endpoint)/search?api-key=\(self.apiKey)") else {
-      throw URLError(.badURL)
+        throw URLError(.badURL)
     }
 
     var request = URLRequest(url: oramaEndpointURL)
-    let httpBody = try self.encodeSearchQuery(query: query, version: "1.0.9", id: self.id) // @todo: use actual version
+    let httpBody = try self.encodeSearchQuery(query: query, version: "1.0.9", id: self.id)
 
     request.httpBody = httpBody
     request.httpMethod = "POST"
@@ -32,10 +51,10 @@ final class OramaClient {
     let (responseData, response) = try await URLSession.shared.data(for: request)
 
     if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-      let responseDataString = String(data: responseData, encoding: .utf8) ?? "No response data"
-      print("HTTP Status Code: \(httpResponse.statusCode)")
-      print("Response Data: \(responseDataString)")
-      throw URLError(.badServerResponse)
+        let responseDataString = String(data: responseData, encoding: .utf8) ?? "No response data"
+        print("HTTP Status Code: \(httpResponse.statusCode)")
+        print("Response Data: \(responseDataString)")
+        throw URLError(.badServerResponse)
     }
 
     let decoder = JSONDecoder()

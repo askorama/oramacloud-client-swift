@@ -6,7 +6,7 @@ extension Encodable {
   func toDictionary() throws -> [String: Any] {
     let data = try JSONEncoder().encode(self)
     let jsonObject = try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed)
-    
+
     guard let dictionary = jsonObject as? [String: Any] else {
       throw NSError()
     }
@@ -57,6 +57,10 @@ struct SearchResults<T> : Encodable, Decodable where T : Encodable & Decodable {
   let hits: [Hit<T>]
   var elapsed: Elapsed
   // @todo: add support for facets
+}
+
+struct SearchRequestConfig {
+  let debounce: Int?
 }
 
 struct SearchRequestPayload: Encodable {
