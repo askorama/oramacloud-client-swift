@@ -18,7 +18,7 @@ class OramaClient {
     public func search<T: Encodable & Decodable>(query: ClientSearchParams) async throws -> SearchResults<T> {
       // let concurrentRequestNumber = (self.searchRequestCounter += 1)
 
-      guard let oramaEndpointURL = URL(string: "\(self.endpoint)/v1/search") else {
+      guard let oramaEndpointURL = URL(string: "\(self.endpoint)/v1/search?api-key=\(self.apiKey)") else {
         throw URLError(.badURL)
       }
 
@@ -31,7 +31,6 @@ class OramaClient {
       request.httpBody = urlEncodedString.data(using: .utf8)
       request.httpMethod = "POST"
       request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-      request.setValue("Bearer \(self.apiKey)", forHTTPHeaderField: "Authorization")
 
       let (responseData, response) = try await URLSession.shared.data(for: request)
 
