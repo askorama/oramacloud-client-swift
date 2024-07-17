@@ -52,14 +52,11 @@ func performSearch() async throws -> SearchResults<MyDoc> {
   let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
   let orama = OramaClient(params: clientParams)
 
-  let searchParams = ClientSearchParams(
-    term: "My search query",
-    mode: SearchMode.fulltext,
-    limit: 10,
-    offset: nil,
-    returning: nil,
-    facets: nil
-  )
+  let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .fulltext)
+    .limit(10) // optional
+    .offset(0) // optional
+    .returning(["title", "description"]) // optional
+    .build()
 
   let searchResults: SearchResults<MyDoc> = try await orama.search(query: searchParams)
 

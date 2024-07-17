@@ -14,42 +14,33 @@ final class oramacloud_clientTests: XCTestCase {
         let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
         let orama = OramaClient(params: clientParams)
 
-        let searchParams = ClientSearchParams(
-            term: "German",
-            mode: SearchMode.fulltext,
-            limit: 10,
-            offset: nil,
-            returning: nil,
-            facets: nil
-        )
-
-        let encodedSearchQuery = try orama.encodeSearchQuery(query: searchParams, version: "123", id: "456")
+        let params = ClientSearchParams.builder(term: "German", mode: .fulltext)
+            .limit(10)
+            .offset(20)
+            .returning(["title", "description"])
+            .build()
+        
+        let encodedSearchQuery = try orama.encodeSearchQuery(query: params, version: "123", id: "456")
 
         XCTAssertNotNil(encodedSearchQuery)
     }
 
     func testE2ESearch() async throws {
+        let expectation = XCTestExpectation(description: "Async search completes")
         let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
         let orama = OramaClient(params: clientParams)
 
-        let searchParams = ClientSearchParams(
-            term: "German",
-            mode: SearchMode.fulltext,
-            limit: 10,
-            offset: nil,
-            returning: nil,
-            facets: nil
-        )
-
-        let expectation = XCTestExpectation(description: "Async search completes")
+        let params = ClientSearchParams.builder(term: "German", mode: .fulltext)
+            .limit(10)
+            .build()
 
         Task {
             do {
-                let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: searchParams)
+                let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: params)
 
                 XCTAssertGreaterThan(searchResults.count, 0)
                 XCTAssertNotNil(searchResults.elapsed.raw)
-                XCTAssertNotNil(searchResults.elapsed.raw)
+                XCTAssertNotNil(searchResults.elapsed.formatted)
                 XCTAssertGreaterThan(searchResults.hits.count, 0)
                 expectation.fulfill()
             } catch {

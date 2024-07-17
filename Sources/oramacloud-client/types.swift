@@ -114,12 +114,3 @@ struct Facets: Encodable, Decodable {
   let number: JSObject<FacetsNumber>?
   let boolean: JSObject<FacetsBoolean>?
 }
-
-struct ClientSearchParams: Encodable, Decodable {
-  let term: String
-  let mode: SearchMode
-  let limit: Int?
-  let offset: Int?
-  let returning: [String]?
-  let facets: Facets?
-}
