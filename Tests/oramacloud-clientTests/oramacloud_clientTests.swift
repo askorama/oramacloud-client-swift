@@ -41,14 +41,7 @@ final class oramacloud_clientTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Async search completes")
 
         Task {
-            do {
-                let (data, response) = try await URLSession.shared.data(for: URLRequest(url: URL(string: "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd")!))
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("HTTP Status Code: \(httpResponse.statusCode)")
-                }
-                let responseData = String(data: data, encoding: .utf8)
-                print("Response Data: \(responseData ?? "No response data")")
-                
+            do {                
                 let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: searchParams)
 
                 XCTAssertGreaterThan(searchResults.count, 0)
