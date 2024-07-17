@@ -10,7 +10,7 @@ final class OramaClient {
   private var searchRequestCounter: Int = 0 
 
   init(params: OramaClientParams) {
-    self.id = UUID().uuidString // @todo: make it a CUID
+    self.id = Cuid.generateId()
     self.apiKey = params.apiKey
     self.endpoint = params.endpoint
   }
