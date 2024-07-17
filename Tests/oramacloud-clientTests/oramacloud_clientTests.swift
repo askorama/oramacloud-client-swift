@@ -50,9 +50,9 @@ final class oramacloud_clientTests: XCTestCase {
                 print("Response Data: \(responseData ?? "No response data")")
                 
                 let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: searchParams)
-                print(searchResults)
+
                 XCTAssertGreaterThan(searchResults.count, 0)
-                XCTAssertGreaterThan(searchResults.elapsed.raw, 0)
+                XCTAssertNotNil(searchResults.elapsed.raw)
                 XCTAssertNotNil(searchResults.elapsed.raw)
                 XCTAssertGreaterThan(searchResults.hits.count, 0)
                 expectation.fulfill()

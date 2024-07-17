@@ -25,8 +25,6 @@ final class OramaClient {
     var request = URLRequest(url: oramaEndpointURL)
     let httpBody = try self.encodeSearchQuery(query: query, version: "1.0.9", id: self.id) // @todo: use actual version
 
-    print(try httpBody.toDictionary())
-
     request.httpBody = httpBody
     request.httpMethod = "POST"
     request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
