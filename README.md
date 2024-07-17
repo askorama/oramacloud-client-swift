@@ -1,5 +1,7 @@
 # Orama Cloud Swift Client
 
+[![GitHub CI](https://github.com/askorama/oramacloud-client-swift/actions/workflows/swift.yml/badge.svg)](https://github.com/askorama/oramacloud-client-swift/actions/workflows/swift.yml)
+
 ## Installing via CocoaPods
 
 To install the Orama Cloud client in your Swift project, you'll need to install [CocoaPods](https://cocoapods.org/)
