@@ -47,7 +47,7 @@ struct MyDoc: Encodable & Decodable {
 }
 
 func performSearch() async throws -> SearchResults<MyDoc> {
- let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
+  let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
   let orama = OramaClient(params: clientParams)
 
   let searchParams = ClientSearchParams(
@@ -59,7 +59,9 @@ func performSearch() async throws -> SearchResults<MyDoc> {
     facets: nil
   )
 
-  let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: searchParams)
+  let searchResults: SearchResults<MyDoc> = try await orama.search(query: searchParams)
+
+  print("\(searchResults.count) total results.")
 
   return searchResults
 }
