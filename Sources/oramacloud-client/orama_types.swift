@@ -1,0 +1,82 @@
+import Foundation
+
+typealias JSObject<T: Decodable & Encodable> = [String: T]
+
+// ======================== CLIENT TYPES ========================
+
+struct OramaClientParams: Encodable, Decodable {
+  let apiKey: String
+  let endpoint: String
+}
+
+enum SearchMode: String, Encodable, Decodable {
+  case fulltext
+  case vector
+  case hybrid
+}
+
+// ======================== SEARCH TYPES ========================
+
+struct Elapsed: Encodable, Decodable {
+  let raw: Int
+  let formatted: String
+}
+
+struct Hit<T> : Encodable, Decodable where T : Encodable & Decodable {
+  let id: String
+  let score: Float
+  let document: T
+}
+
+struct SearchResults<T> : Encodable, Decodable where T : Encodable & Decodable {
+  let count: Int
+  let hits: [Hit<T>]
+  var elapsed: Elapsed
+  // @todo: add support for facets
+}
+
+// ======================== FACETS TYPES ========================
+
+enum Order: String, Decodable, Encodable {
+  case asc
+  case desc
+}
+
+struct FacetLimitOrder: Encodable, Decodable {
+  let limit: Int?
+  let order: Order?
+  let offset: Int?
+}
+
+enum FacetsString: Encodable, Decodable {
+  case JSObject(FacetLimitOrder)
+}
+
+struct FacetsNumberRange: Encodable, Decodable {
+  let from: Int
+  let to: Int
+}
+
+struct FacetsNumber: Encodable, Decodable {
+  let ranges: [FacetsNumberRange]
+}
+
+struct FacetsBoolean: Encodable, Decodable {
+  let isTrue: Bool?
+  let isFalse: Bool?
+}
+
+struct Facets: Encodable, Decodable {
+  let string: JSObject<FacetsString>?
+  let number: JSObject<FacetsNumber>?
+  let boolean: JSObject<FacetsBoolean>?
+}
+
+struct ClientSearchParams: Encodable, Decodable {
+  let term: String
+  let mode: SearchMode
+  let limit: Int?
+  let offset: Int?
+  let returning: [String]?
+  let facets: Facets?
+}
