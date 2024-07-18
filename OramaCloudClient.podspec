@@ -7,7 +7,7 @@ Pod::Spec.new do |spec|
   spec.license      = { :type => "Apache 2.0", :file => "LICENSE.md" }
   spec.author       = { 'Orama' => 'info@oramasearch.com'  }
   spec.documentation_url = "https://docs.orama.com/cloud"
-  spec.platforms = { :ios => "16.0", :osx => "13.0", :watchos => "9.0", :tvos => "16.0" }
+  spec.platforms = { :ios => "16.0", :osx => "13.0" }
   spec.swift_version = "5.1"
   spec.source = { :git => "https://github.com/askorama/oramacloud-client-swift.git", :tag => spec.version }
   spec.source_files  = "Sources/oramacloud-client/**/*.swift"
