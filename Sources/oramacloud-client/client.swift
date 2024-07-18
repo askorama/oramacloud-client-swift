@@ -2,9 +2,9 @@ import Foundation
 
 @available(macOS 13.0, *)
 final class OramaClient {
+  let apiKey: String
+  let endpoint: String
   private let id: String
-  private let apiKey: String
-  private let endpoint: String
   private let debouncer = Debouncer()
 
   private var searchRequestCounter: Int = 0 
