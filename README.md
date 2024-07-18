@@ -48,21 +48,22 @@ struct MyDoc: Encodable & Decodable {
   let description: String
 }
 
-func performSearch() async throws -> SearchResults<MyDoc> {
-  let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
-  let orama = OramaClient(params: clientParams)
+let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
+let orama = OramaClient(params: clientParams)
 
-  let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .fulltext)
-    .limit(10) // optional
-    .offset(0) // optional
-    .returning(["title", "description"]) // optional
-    .build()
+let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .fulltext)
+  .limit(10) // optional
+  .offset(0) // optional
+  .returning(["title", "description"]) // optional
+  .build()
 
-  let searchResults: SearchResults<MyDoc> = try await orama.search(query: searchParams)
+let searchResults: SearchResults<MyDoc> = try await orama.search(query: searchParams)
 
-  print("\(searchResults.count) total results.")
+print("\(searchResults.count) total results.")
 
-  return searchResults
-}
-
+return searchResults
 ```
+
+## License
+
+[Apache 2.0](/LICENSE.md)
