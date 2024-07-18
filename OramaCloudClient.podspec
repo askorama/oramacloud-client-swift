@@ -9,7 +9,7 @@ Pod::Spec.new do |spec|
   spec.documentation_url = "https://docs.orama.com/cloud"
   spec.platforms = { :ios => "16.0", :osx => "13.0" }
   spec.swift_version = "5.1"
-  spec.source = { :git => "https://github.com/askorama/oramacloud-client-swift.git", :tag => spec.version }
+  spec.source = { :git => 'https://github.com/askorama/oramacloud-client-swift.git', :branch => 'main' }
   spec.source_files  = "Sources/oramacloud-client/**/*.swift"
   spec.resource_bundles = { 'OramaCloudClient' => ['PrivacyInfo.xcprivacy']}
 end
