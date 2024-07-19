@@ -60,8 +60,6 @@ let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .ful
 let searchResults: SearchResults<MyDoc> = try await orama.search(query: searchParams)
 
 print("\(searchResults.count) total results.")
-
-return searchResults
 ```
 
 ## License

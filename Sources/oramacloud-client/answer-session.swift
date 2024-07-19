@@ -43,6 +43,17 @@ struct AnswerParams<Doc: Encodable & Decodable> {
     let related: Related?
   }
 
+  struct Interaction<T: Decodable & Encodable> {
+    var interactionId: String
+    var query: String
+    var response: String
+    var relatedQueries: [String]?
+    var sources: SearchResults<T>?
+    var translatedQuery: ClientSearchParams?
+    var loading: Bool
+    var aborted: Bool = false
+  }
+
   struct Events {
     var onMessageChange: (([Message]) -> Void)?
     var onMessageLoading: ((Bool) -> Void)?
@@ -50,6 +61,8 @@ struct AnswerParams<Doc: Encodable & Decodable> {
     var onSourceChange: ((SearchResults<Doc>) -> Void)?
     var onQueryTranslated: ((ClientSearchParams) -> Void)?
     var onRelatedQueries: (([String]) -> Void)?
+    var onNewInteractionStarted: ((String) -> Void)?
+    var onStateChange: (([Interaction<Doc>]) -> Void)?
   }
 }
 
@@ -67,8 +80,11 @@ class AnswerSession<Doc: Encodable & Decodable> {
   private let userContext: AnswerParams<Doc>.UserSpecs
   private let events: AnswerParams<Doc>.Events?
   private let searchEndpoint: String
+  private let conversationID = Cuid.generateId()
+  private let userID = User.init().getUserID()
   private var messages: [AnswerParams<Doc>.Message]
   private var inferenceType: AnswerParams<Doc>.InferenceType
+  private var state: [AnswerParams<Doc>.Interaction<Doc>] = []
 
   init(params: AnswerParams<Doc>) {
     self.userContext = params.userContext
@@ -81,8 +97,27 @@ class AnswerSession<Doc: Encodable & Decodable> {
 
   func fetchAnswer(params: AnswerParams<Doc>.AskParams) async throws -> AsyncThrowingStream<String, Error> {
     AsyncThrowingStream { continuation in
+      let interactionId = Cuid.generateId()
       self.abortController = Task {
         do {
+
+          
+          self.state.append(AnswerParams<Doc>.Interaction(
+            interactionId: interactionId,
+            query: params.query,
+            response: "",
+            relatedQueries: nil,
+            sources: nil,
+            translatedQuery: nil,
+            loading: true
+          ))
+
+          // Keep it there to avoid race conditions if a request is spawned multiple times in a row
+          let currentInteraction = self.state.firstIndex(where: { $0.interactionId == interactionId })!
+
+          self.events?.onNewInteractionStarted?(interactionId)
+          self.events?.onStateChange?(self.state)
+
           guard let oramaAnswerEndpointURL = URL(string: self.endpoint) else {
             throw URLError(.badURL)
           }
@@ -91,7 +126,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
           
           request.httpMethod = "POST"
           request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-          request.httpBody = try self.buildRequestBody(params: params)
+          request.httpBody = try self.buildRequestBody(params: params, interactionId: interactionId)
 
           let (responseStream, response) = try await URLSession.shared.bytes(for: request)
 
@@ -124,21 +159,29 @@ class AnswerSession<Doc: Encodable & Decodable> {
                 case "sources":
                     if let sourcesData = parsedMessage.message.data(using: .utf8),
                       let sources = try? JSONDecoder().decode(SearchResults<Doc>.self, from: sourcesData) {
+                      self.state[currentInteraction].sources = sources
                       self.events?.onSourceChange?(sources)
+                      self.events?.onStateChange?(self.state)
                     }
                 case "query-translated":
                     if let queryData = parsedMessage.message.data(using: .utf8),
                       let query = try? JSONDecoder().decode(ClientSearchParams.self, from: queryData) {
+                      self.state[currentInteraction].translatedQuery = query
                       self.events?.onQueryTranslated?(query)
+                      self.events?.onStateChange?(self.state)
                     }
                 case "related-queries":
                     if let queriesData = parsedMessage.message.data(using: .utf8),
                       let queries = try? JSONDecoder().decode([String].self, from: queriesData) {
+                      self.state[currentInteraction].relatedQueries = queries
                       self.events?.onRelatedQueries?(queries)
+                      self.events?.onStateChange?(self.state)
                     }
                 case "text":
                   lastMessage.content += parsedMessage.message
+                  self.state[currentInteraction].response = lastMessage.content
                   self.events?.onMessageChange?(self.messages)
+                  self.events?.onStateChange?(self.state)
                   continuation.yield(lastMessage.content)
                 default:
                     break
@@ -150,12 +193,17 @@ class AnswerSession<Doc: Encodable & Decodable> {
 
         } catch {
           if error is CancellationError {
+            self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].loading = false
+            self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].aborted = true
             self.events?.onAnswerAborted?(true)
+            self.events?.onStateChange?(self.state)
           } else {
             continuation.finish(throwing: error)
           }
         }
 
+        self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].loading = false
+        self.events?.onStateChange?(self.state)
         self.events?.onMessageLoading?(false)
       }
     }
@@ -166,16 +214,17 @@ class AnswerSession<Doc: Encodable & Decodable> {
     self.events?.onMessageChange?(self.messages)
   }
 
-  private func buildRequestBody(params: AnswerParams<Doc>.AskParams) throws -> Data {
+  private func buildRequestBody(params: AnswerParams<Doc>.AskParams, interactionId: String) throws -> Data {
     var components = URLComponents()
     components.queryItems = [
       URLQueryItem(name: "type", value: "documentation"), // @todo: remove hardcoded value here
       URLQueryItem(name: "messages", value: encodeJSON(self.messages)),
-      URLQueryItem(name: "query", value: params.query ?? ""),
-      // URLQueryItem(name: "conversationId", value: self.conversationID),
-      // URLQueryItem(name: "userId", value: self.userID),
+      URLQueryItem(name: "query", value: params.query),
+      URLQueryItem(name: "conversationId", value: self.conversationID),
+      URLQueryItem(name: "userId", value: self.userID),
       URLQueryItem(name: "endpoint", value: self.searchEndpoint),
-      URLQueryItem(name: "searchParams", value: encodeJSON(params))
+      URLQueryItem(name: "searchParams", value: encodeJSON(params)),
+      URLQueryItem(name: "interactionId", value: interactionId)
     ]
     
     if params.userData != nil {
