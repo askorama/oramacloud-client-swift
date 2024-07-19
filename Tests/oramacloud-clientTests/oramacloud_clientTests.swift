@@ -1,5 +1,5 @@
-import XCTest
 @testable import oramacloud_client
+import XCTest
 
 struct E2ETest1Document: Encodable & Decodable {
     let breed: String
@@ -19,7 +19,7 @@ final class oramacloud_clientTests: XCTestCase {
             .offset(20)
             .returning(["title", "description"])
             .build()
-        
+
         let encodedSearchQuery = try orama.encodeSearchQuery(query: params, version: "123", id: "456")
 
         XCTAssertNotNil(encodedSearchQuery)
@@ -53,14 +53,14 @@ final class oramacloud_clientTests: XCTestCase {
 
         wait(for: [expectation], timeout: 10.0)
     }
-    
+
     func testE2EAnswerSession() async throws {
         struct E2EDoc: Encodable & Decodable {
             let breed: String
         }
-        
+
         let expectation = XCTestExpectation(description: "Async answer session completes")
-        
+
         let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
         let orama = OramaClient(params: clientParams)
         let answerSessionParams = AnswerParams<E2EDoc>(
@@ -70,12 +70,12 @@ final class oramacloud_clientTests: XCTestCase {
             userContext: nil,
             events: nil
         )
-        
+
         let answerSession = AnswerSession(params: answerSessionParams)
-                
+
         let askParams = AnswerParams<E2EDoc>.AskParams(query: "german", userData: nil, related: nil)
         let response = try await answerSession.ask(params: askParams)
-        
+
         XCTAssertNotNil(response)
         wait(for: [expectation], timeout: 60.0)
     }
@@ -84,6 +84,6 @@ final class oramacloud_clientTests: XCTestCase {
 @available(macOS 12.0, *)
 extension oramacloud_clientTests {
     static var allTests = [
-        ("testE2ESearch", testE2ESearch)
+        ("testE2ESearch", testE2ESearch),
     ]
 }

@@ -8,12 +8,14 @@ let package = Package(
     products: [
         .library(
             name: "oramacloud-client",
-            targets: ["oramacloud-client"]),
+            targets: ["oramacloud-client"]
+        ),
     ],
     targets: [
         .target(name: "oramacloud-client"),
         .testTarget(
             name: "oramacloud-clientTests",
-            dependencies: ["oramacloud-client"]),
+            dependencies: ["oramacloud-client"]
+        ),
     ]
 )
