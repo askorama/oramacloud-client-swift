@@ -110,21 +110,21 @@ class AnswerSession<Doc: Encodable & Decodable> {
     public func on(event: AnswerParams<Doc>.Event, callback: @escaping AnswerParams<Doc>.Events.Callback) -> AnswerSession<Doc> {
         switch event {
         case .messageChange:
-            events?.onMessageChange = { message in callback(message) }
+            events?.onMessageChange = { callback($0) }
         case .messageLoading:
-            events?.onMessageLoading = { loading in callback(loading) }
+            events?.onMessageLoading = { callback($0) }
         case .answerAborted:
-            events?.onAnswerAborted = { answerAborted in callback(answerAborted) }
+            events?.onAnswerAborted = { callback($0) }
         case .sourceChange:
-            events?.onSourceChange = { sources in callback(sources) }
+            events?.onSourceChange = { callback($0) }
         case .queryTranslated:
-            events?.onQueryTranslated = { query in callback(query) }
+            events?.onQueryTranslated = { callback($0) }
         case .relatedQueries:
-            events?.onRelatedQueries = { relatedQueries in callback(relatedQueries) }
+            events?.onRelatedQueries = { callback($0) }
         case .newInteractionStarted:
-            events?.onNewInteractionStarted = { interactionID in callback(interactionID) }
+            events?.onNewInteractionStarted = { callback($0) }
         case .stateChange:
-            events?.onStateChange = { state in callback(state) }
+            events?.onStateChange = { callback($0) }
         }
 
         return self
@@ -158,18 +158,15 @@ class AnswerSession<Doc: Encodable & Decodable> {
                         loading: true
                     ))
 
-                    // Keep it there to avoid race conditions if a request is spawned multiple times in a row
-                    let currentInteraction = self.state.firstIndex(where: { $0.interactionId == interactionId })!
-
+                    let currentInteractionIndex = self.state.firstIndex(where: { $0.interactionId == interactionId })!
                     self.events?.onNewInteractionStarted?(interactionId)
                     self.events?.onStateChange?(self.state)
 
-                    guard let oramaAnswerEndpointURL = URL(string: self.endpoint) else {
+                    guard let url = URL(string: self.endpoint) else {
                         throw URLError(.badURL)
                     }
 
-                    var request = URLRequest(url: oramaAnswerEndpointURL)
-
+                    var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
                     request.httpBody = try self.buildRequestBody(params: params, interactionId: interactionId)
@@ -177,22 +174,17 @@ class AnswerSession<Doc: Encodable & Decodable> {
                     let (responseStream, response) = try await URLSession.shared.bytes(for: request)
 
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        throw NSError(domain: "NetworkError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+                        throw URLError(.badServerResponse)
                     }
 
                     self.events?.onMessageLoading?(true)
                     self.addNewEmptyAssistantMessage()
-
-                    guard var lastMessage = self.messages.last else {
-                        throw NSError(domain: "MessageError", code: 0, userInfo: [NSLocalizedDescriptionKey: "No messages available"])
-                    }
 
                     var buffer = ""
                     for try await byte in responseStream {
                         if Task.isCancelled { break }
 
                         buffer += String(bytes: [byte], encoding: .utf8) ?? ""
-
                         while let endIndex = buffer.firstIndex(of: "\n") {
                             let rawMessage = String(buffer[..<endIndex])
                             buffer = String(buffer[buffer.index(after: endIndex)...])
@@ -206,7 +198,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
                                     if let sourcesData = parsedMessage.message.data(using: .utf8),
                                        let sources = try? JSONDecoder().decode(SearchResults<Doc>.self, from: sourcesData)
                                     {
-                                        self.state[currentInteraction].sources = sources
+                                        self.state[currentInteractionIndex].sources = sources
                                         self.events?.onSourceChange?(sources)
                                         self.events?.onStateChange?(self.state)
                                     }
@@ -214,7 +206,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
                                     if let queryData = parsedMessage.message.data(using: .utf8),
                                        let query = try? JSONDecoder().decode(ClientSearchParams.self, from: queryData)
                                     {
-                                        self.state[currentInteraction].translatedQuery = query
+                                        self.state[currentInteractionIndex].translatedQuery = query
                                         self.events?.onQueryTranslated?(query)
                                         self.events?.onStateChange?(self.state)
                                     }
@@ -222,16 +214,15 @@ class AnswerSession<Doc: Encodable & Decodable> {
                                     if let queriesData = parsedMessage.message.data(using: .utf8),
                                        let queries = try? JSONDecoder().decode([String].self, from: queriesData)
                                     {
-                                        self.state[currentInteraction].relatedQueries = queries
+                                        self.state[currentInteractionIndex].relatedQueries = queries
                                         self.events?.onRelatedQueries?(queries)
                                         self.events?.onStateChange?(self.state)
                                     }
                                 case "text":
-                                    lastMessage.content += parsedMessage.message
-                                    self.state[currentInteraction].response = lastMessage.content
+                                    self.state[currentInteractionIndex].response += parsedMessage.message
                                     self.events?.onMessageChange?(self.messages)
                                     self.events?.onStateChange?(self.state)
-                                    continuation.yield(lastMessage.content)
+                                    continuation.yield(self.state[currentInteractionIndex].response)
                                 default:
                                     break
                                 }
@@ -242,8 +233,9 @@ class AnswerSession<Doc: Encodable & Decodable> {
 
                 } catch {
                     if error is CancellationError {
-                        self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].loading = false
-                        self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].aborted = true
+                        let index = self.state.firstIndex(where: { $0.interactionId == interactionId })!
+                        self.state[index].loading = false
+                        self.state[index].aborted = true
                         self.events?.onAnswerAborted?(true)
                         self.events?.onStateChange?(self.state)
                         continuation.finish()
@@ -252,13 +244,12 @@ class AnswerSession<Doc: Encodable & Decodable> {
                     }
                 }
 
-                self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].loading = false
+                let index = self.state.firstIndex(where: { $0.interactionId == interactionId })!
+                self.state[index].loading = false
                 self.events?.onStateChange?(self.state)
                 self.events?.onMessageLoading?(false)
                 continuation.finish()
             }
-
-            continuation.finish()
         }
     }
 
