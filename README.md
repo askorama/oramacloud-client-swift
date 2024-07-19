@@ -40,6 +40,8 @@ dependencies: [
 
 ## Usage
 
+Performing full-text, vector, or hybrid search:
+
 ```swift
 import OramaClient
 
@@ -51,7 +53,7 @@ struct MyDoc: Encodable & Decodable {
 let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
 let orama = OramaClient(params: clientParams)
 
-let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .fulltext)
+let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .fulltext) // Mode can be .vector or .hybrid too
   .limit(10) // optional
   .offset(0) // optional
   .returning(["title", "description"]) // optional
@@ -60,6 +62,38 @@ let searchParams = ClientSearchParams.builder(term: "What is Orama?", mode: .ful
 let searchResults: SearchResults<MyDoc> = try await orama.search(query: searchParams)
 
 print("\(searchResults.count) total results.")
+```
+
+Performing an answer session:
+
+```swift
+import OramaClient
+
+struct MyDoc: Encodable & Decodable {
+  let title: String
+  let description: String
+}
+
+let clientParams = OramaClientParams(endpoint: "<ORAMA CLOUD URL>", apiKey: "<ORAMA CLOUD API KEY>")
+let orama = OramaClient(params: clientParams)
+let answerSessionParams = AnswerParams<E2EDoc>(
+    initialMessages: [],
+    inferenceType: .documentation,
+    oramaClient: orama,
+    userContext: nil,
+    events: nil
+  )
+
+let answerSession = AnswerSession(params: answerSessionParams)
+  .on(event: .stateChange,    callback: { state   in print(state)   })
+  .on(event: .relatedQueries, callback: { related in print(related) })
+
+let askParams = AnswerParams<E2EDoc>.AskParams(
+    query: "What's the best movie to watch with the family?",
+    userData: nil,
+    related: nil
+  )
+let answer = try await answerSession.ask(params: askParams)
 ```
 
 ## License

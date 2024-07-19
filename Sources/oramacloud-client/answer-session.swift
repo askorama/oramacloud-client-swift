@@ -5,7 +5,7 @@ struct AnswerParams<Doc: Encodable & Decodable> {
   let initialMessages: [Message]
   let inferenceType: InferenceType
   let oramaClient: OramaClient
-  let userContext: UserSpecs
+  let userContext: UserSpecs?
   let events: Events?
 
   enum InferenceType: Encodable, Decodable {
@@ -55,6 +55,8 @@ struct AnswerParams<Doc: Encodable & Decodable> {
   }
 
   struct Events {
+    typealias Callback = (Any) -> Void
+
     var onMessageChange: (([Message]) -> Void)?
     var onMessageLoading: ((Bool) -> Void)?
     var onAnswerAborted: ((Bool) -> Void)?
@@ -63,6 +65,17 @@ struct AnswerParams<Doc: Encodable & Decodable> {
     var onRelatedQueries: (([String]) -> Void)?
     var onNewInteractionStarted: ((String) -> Void)?
     var onStateChange: (([Interaction<Doc>]) -> Void)?
+  }
+
+  enum Event {
+    case messageChange
+    case messageLoading
+    case answerAborted
+    case sourceChange
+    case queryTranslated
+    case relatedQueries
+    case newInteractionStarted
+    case stateChange
   }
 }
 
@@ -78,7 +91,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
   private var abortController: Task<Void, Error>?
   private var endpoint: String
   private let userContext: AnswerParams<Doc>.UserSpecs
-  private let events: AnswerParams<Doc>.Events?
+  private var events: AnswerParams<Doc>.Events?
   private let searchEndpoint: String
   private let conversationID = Cuid.generateId()
   private let userID = User.init().getUserID()
@@ -87,7 +100,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
   private var state: [AnswerParams<Doc>.Interaction<Doc>] = []
 
   init(params: AnswerParams<Doc>) {
-    self.userContext = params.userContext
+    self.userContext = params.userContext ?? .string
     self.events = params.events
     self.messages = params.initialMessages
     self.inferenceType = params.inferenceType
@@ -95,13 +108,47 @@ class AnswerSession<Doc: Encodable & Decodable> {
     self.searchEndpoint = params.oramaClient.endpoint
   }
 
-  func fetchAnswer(params: AnswerParams<Doc>.AskParams) async throws -> AsyncThrowingStream<String, Error> {
+  public func on(event: AnswerParams<Doc>.Event, callback: @escaping AnswerParams<Doc>.Events.Callback) -> AnswerSession<Doc> {
+    switch event {
+      case .messageChange:
+        self.events?.onMessageChange = { message in callback(message) }
+      case .messageLoading:
+        self.events?.onMessageLoading = { loading in callback(loading) }
+      case .answerAborted:
+        self.events?.onAnswerAborted = { answerAborted in callback(answerAborted) }
+      case .sourceChange:
+        self.events?.onSourceChange = { sources in callback(sources) }
+      case .queryTranslated:
+        self.events?.onQueryTranslated = { query in callback(query) }
+      case .relatedQueries:
+        self.events?.onRelatedQueries = { relatedQueries in callback(relatedQueries) }
+      case .newInteractionStarted:
+        self.events?.onNewInteractionStarted = { interactionID in callback(interactionID) }
+      case .stateChange:
+        self.events?.onStateChange = { state in callback(state) }
+    }
+
+    return self
+  }
+
+  public func askStream(params: AnswerParams<Doc>.AskParams) async throws -> String {
+    return try await ask(params: params)
+  }
+
+  public func ask(params: AnswerParams<Doc>.AskParams) async throws -> String {
+    let stream = try await fetchAnswer(params: params)
+    var response = ""
+    for try await message in stream {
+      response += message
+    }
+    return response
+  }
+
+  private func fetchAnswer(params: AnswerParams<Doc>.AskParams) async throws -> AsyncThrowingStream<String, Error> {
     AsyncThrowingStream { continuation in
       let interactionId = Cuid.generateId()
       self.abortController = Task {
         do {
-
-          
           self.state.append(AnswerParams<Doc>.Interaction(
             interactionId: interactionId,
             query: params.query,
@@ -197,6 +244,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
             self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].aborted = true
             self.events?.onAnswerAborted?(true)
             self.events?.onStateChange?(self.state)
+            continuation.finish()
           } else {
             continuation.finish(throwing: error)
           }
@@ -205,7 +253,10 @@ class AnswerSession<Doc: Encodable & Decodable> {
         self.state[self.state.firstIndex(where: { $0.interactionId == interactionId })!].loading = false
         self.events?.onStateChange?(self.state)
         self.events?.onMessageLoading?(false)
+        continuation.finish()
       }
+
+      continuation.finish()
     }
   }
 

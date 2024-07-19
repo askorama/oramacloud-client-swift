@@ -45,12 +45,39 @@ final class oramacloud_clientTests: XCTestCase {
                 expectation.fulfill()
             } catch {
                 print("Search failed with error: \(error)")
+                fflush(stdout)
                 XCTFail("Search failed with error: \(error)")
                 expectation.fulfill()
             }
         }
 
         wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testE2EAnswerSession() async throws {
+        struct E2EDoc: Encodable & Decodable {
+            let breed: String
+        }
+        
+        let expectation = XCTestExpectation(description: "Async answer session completes")
+        
+        let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
+        let orama = OramaClient(params: clientParams)
+        let answerSessionParams = AnswerParams<E2EDoc>(
+            initialMessages: [],
+            inferenceType: .documentation,
+            oramaClient: orama,
+            userContext: nil,
+            events: nil
+        )
+        
+        let answerSession = AnswerSession(params: answerSessionParams)
+                
+        let askParams = AnswerParams<E2EDoc>.AskParams(query: "german", userData: nil, related: nil)
+        let response = try await answerSession.ask(params: askParams)
+        
+        XCTAssertNotNil(response)
+        wait(for: [expectation], timeout: 60.0)
     }
 }
 
