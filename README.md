@@ -45,7 +45,7 @@ Performing full-text, vector, or hybrid search:
 ```swift
 import OramaClient
 
-struct MyDoc: Encodable & Decodable {
+struct MyDoc: Codable {
   let title: String
   let description: String
 }
@@ -69,7 +69,7 @@ Performing an answer session:
 ```swift
 import OramaClient
 
-struct MyDoc: Encodable & Decodable {
+struct MyDoc: Codable {
   let title: String
   let description: String
 }

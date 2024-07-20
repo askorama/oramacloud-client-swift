@@ -1,7 +1,7 @@
 @testable import oramacloud_client
 import XCTest
 
-struct E2ETest1Document: Encodable & Decodable {
+struct E2ETest1Document: Codable {
     let breed: String
 }
 

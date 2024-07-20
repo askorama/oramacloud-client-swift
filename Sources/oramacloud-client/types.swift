@@ -28,12 +28,12 @@ extension Dictionary {
 
 // ======================== CLIENT TYPES ========================
 
-struct OramaClientParams: Encodable, Decodable {
+struct OramaClientParams: Codable {
     let endpoint: String
     let apiKey: String
 }
 
-enum SearchMode: String, Encodable, Decodable {
+enum SearchMode: String, Codable {
     case fulltext
     case vector
     case hybrid
@@ -41,18 +41,18 @@ enum SearchMode: String, Encodable, Decodable {
 
 // ======================== SEARCH TYPES ========================
 
-struct Elapsed: Encodable, Decodable {
+struct Elapsed: Codable {
     let raw: Int
     let formatted: String
 }
 
-struct Hit<T>: Encodable, Decodable where T: Encodable & Decodable {
+struct Hit<T>: Codable where T: Codable {
     let id: String
     let score: Float
     let document: T
 }
 
-struct SearchResults<T>: Encodable, Decodable where T: Encodable & Decodable {
+struct SearchResults<T>: Codable where T: Codable {
     let count: Int
     let hits: [Hit<T>]
     var elapsed: Elapsed
@@ -76,41 +76,4 @@ struct SearchRequestPayload: Encodable {
         }
         return jsonObject
     }
-}
-
-// ======================== FACETS TYPES ========================
-
-enum Order: String, Decodable, Encodable {
-    case asc
-    case desc
-}
-
-struct FacetLimitOrder: Encodable, Decodable {
-    let limit: Int?
-    let order: Order?
-    let offset: Int?
-}
-
-enum FacetsString: Encodable, Decodable {
-    case JSObject(FacetLimitOrder)
-}
-
-struct FacetsNumberRange: Encodable, Decodable {
-    let from: Int
-    let to: Int
-}
-
-struct FacetsNumber: Encodable, Decodable {
-    let ranges: [FacetsNumberRange]
-}
-
-struct FacetsBoolean: Encodable, Decodable {
-    let isTrue: Bool?
-    let isFalse: Bool?
-}
-
-struct Facets: Encodable, Decodable {
-    let string: JSObject<FacetsString>?
-    let number: JSObject<FacetsNumber>?
-    let boolean: JSObject<FacetsBoolean>?
 }

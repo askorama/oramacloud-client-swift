@@ -1,43 +1,43 @@
 import Foundation
 
 @available(macOS 13.0, *)
-struct AnswerParams<Doc: Encodable & Decodable> {
+struct AnswerParams<Doc: Codable> {
     let initialMessages: [Message]
     let inferenceType: InferenceType
     let oramaClient: OramaClient
     let userContext: UserSpecs?
     let events: Events?
 
-    enum InferenceType: Encodable, Decodable {
+    enum InferenceType: Codable {
         case documentation
     }
 
-    enum RelatedFormat: Encodable, Decodable {
+    enum RelatedFormat: Codable {
         case question
         case query
     }
 
-    enum Role: Encodable, Decodable {
+    enum Role: Codable {
         case user
         case assistant
     }
 
-    struct Message: Encodable, Decodable {
+    struct Message: Codable {
         let role: Role
         var content: String
     }
 
-    enum UserSpecs: Encodable, Decodable {
+    enum UserSpecs: Codable {
         case string
         case JSObject
     }
 
-    struct Related: Encodable, Decodable {
+    struct Related: Codable {
         var howMany: Int? = 3
         var format: RelatedFormat? = .question
     }
 
-    struct AskParams: Encodable, Decodable {
+    struct AskParams: Codable {
         let query: String
         let userData: UserSpecs?
         let related: Related?
@@ -80,7 +80,7 @@ struct AnswerParams<Doc: Encodable & Decodable> {
 }
 
 @available(macOS 13.0, *)
-class AnswerSession<Doc: Encodable & Decodable> {
+class AnswerSession<Doc: Codable> {
     struct SSEMessage: Codable {
         let type: String
         let message: String
