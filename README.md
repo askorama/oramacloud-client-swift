@@ -85,8 +85,8 @@ let answerSessionParams = AnswerParams<E2EDoc>(
   )
 
 let answerSession = AnswerSession(params: answerSessionParams)
-  .on(event: .stateChange,    callback: { state   in print(state)   })
-  .on(event: .relatedQueries, callback: { related in print(related) })
+  .on(event: .stateChange) { print($0) }
+  .on(event: .relatedQueries) { print($0) }
 
 let askParams = AnswerParams<E2EDoc>.AskParams(
     query: "What's the best movie to watch with the family?",

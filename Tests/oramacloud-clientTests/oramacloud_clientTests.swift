@@ -84,8 +84,8 @@ final class oramacloud_clientTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Message loading event called")
         var events: [Bool] = []
 
-        _ = answerSession.on(event: .messageLoading) { isLoading in
-            events.append(isLoading as! Bool)
+        _ = answerSession.on(event: .messageLoading) {
+            events.append($0 as! Bool)
             if events.count == 2 { // Expecting two events: true and false
                 expectation.fulfill()
             }
