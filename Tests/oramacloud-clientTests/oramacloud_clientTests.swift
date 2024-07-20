@@ -8,47 +8,40 @@ struct E2ETest1Document: Encodable & Decodable {
 let e2eEndpoint = "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd"
 let e2eApiKey = "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx"
 
-func testE2EAnswerSession() async throws {
+@available(macOS 12.0, *)
+final class oramacloud_clientTests: XCTestCase {
     struct E2EDoc: Codable {
         let breed: String
     }
 
-    let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
-    let orama = OramaClient(params: clientParams)
-    let answerSessionParams = AnswerParams<E2EDoc>(
-        initialMessages: [],
-        inferenceType: .documentation,
-        oramaClient: orama,
-        userContext: nil,
-        events: nil
-    )
+    var oramaClient: OramaClient!
+    var answerSession: AnswerSession<E2EDoc>!
 
-    let answerSession = AnswerSession(params: answerSessionParams)
+    override func setUp() {
+        super.setUp()
+        let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
+        oramaClient = OramaClient(params: clientParams)
 
-    let askParams = AnswerParams<E2EDoc>.AskParams(query: "german", userData: nil, related: nil)
-
-    do {
-        let response = try await answerSession.ask(params: askParams)
-        XCTAssertFalse(response.isEmpty, "Response should not be empty")
-    } catch {
-        XCTFail("AnswerSession failed with error: \(error)")
+        let answerParams = AnswerParams<E2EDoc>(
+            initialMessages: [],
+            inferenceType: .documentation,
+            oramaClient: oramaClient,
+            userContext: nil,
+            events: nil
+        )
+        answerSession = AnswerSession(params: answerParams)
     }
-}
 
-@available(macOS 12.0, *)
-final class oramacloud_clientTests: XCTestCase {
     func testE2ESearch() async throws {
         let expectation = XCTestExpectation(description: "Async search completes")
-        let clientParams = OramaClientParams(endpoint: e2eEndpoint, apiKey: e2eApiKey)
-        let orama = OramaClient(params: clientParams)
-
-        let params = ClientSearchParams.builder(term: "German", mode: .fulltext)
-            .limit(10)
-            .build()
 
         Task {
             do {
-                let searchResults: SearchResults<E2ETest1Document> = try await orama.search(query: params)
+                let params = ClientSearchParams.builder(term: "German", mode: .fulltext)
+                    .limit(10)
+                    .offset(0)
+                    .build()
+                let searchResults: SearchResults<E2ETest1Document> = try await oramaClient.search(query: params)
 
                 XCTAssertGreaterThan(searchResults.count, 0)
                 XCTAssertNotNil(searchResults.elapsed.raw)
@@ -56,14 +49,53 @@ final class oramacloud_clientTests: XCTestCase {
                 XCTAssertGreaterThan(searchResults.hits.count, 0)
                 expectation.fulfill()
             } catch {
-                print("Search failed with error: \(error)")
+                debugPrint("Search failed with error: \(error)")
                 fflush(stdout)
                 XCTFail("Search failed with error: \(error)")
                 expectation.fulfill()
             }
         }
 
-        wait(for: [expectation], timeout: 10.0)
+        await fulfillment(of: [expectation], timeout: 10.0)
+    }
+
+    func testE2EAnswerSession() async throws {
+        let answerSessionParams = AnswerParams<E2EDoc>(
+            initialMessages: [],
+            inferenceType: .documentation,
+            oramaClient: oramaClient,
+            userContext: nil,
+            events: nil
+        )
+
+        let answerSession = AnswerSession(params: answerSessionParams)
+
+        let askParams = AnswerParams<E2EDoc>.AskParams(query: "german", userData: nil, related: nil)
+
+        do {
+            let response = try await answerSession.ask(params: askParams)
+            XCTAssertFalse(response.isEmpty, "Response should not be empty")
+        } catch {
+            XCTFail("AnswerSession failed with error: \(error)")
+        }
+    }
+
+    func testOnMessageLoading() async throws {
+        let expectation = XCTestExpectation(description: "Message loading event called")
+        var events: [Bool] = []
+
+        _ = answerSession.on(event: .messageLoading) { isLoading in
+            events.append(isLoading as! Bool)
+            if events.count == 2 { // Expecting two events: true and false
+                expectation.fulfill()
+            }
+        }
+
+        let _ = try await answerSession.ask(params: AnswerParams.AskParams(query: "german", userData: nil, related: nil))
+
+        await fulfillment(of: [expectation], timeout: 10.0)
+
+        XCTAssertEqual(events, [true, false], "Expected two message loading events: true followed by false")
     }
 
     func testAsyncE2EAnswerSession() throws {

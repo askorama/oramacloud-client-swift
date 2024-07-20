@@ -67,7 +67,7 @@ struct AnswerParams<Doc: Encodable & Decodable> {
         var onStateChange: (([Interaction<Doc>]) -> Void)?
     }
 
-    enum Event {
+    enum Event: String {
         case messageChange
         case messageLoading
         case answerAborted
@@ -86,6 +86,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
         let message: String
     }
 
+    private let eventEmitter = EventEmitter()
     private let endpointBaseURL = "https://answer.api.orama.com"
     private var abortController: Task<Void, Error>?
     private var endpoint: String
@@ -108,25 +109,9 @@ class AnswerSession<Doc: Encodable & Decodable> {
     }
 
     public func on(event: AnswerParams<Doc>.Event, callback: @escaping AnswerParams<Doc>.Events.Callback) -> AnswerSession<Doc> {
-        switch event {
-        case .messageChange:
-            events?.onMessageChange = { callback($0) }
-        case .messageLoading:
-            events?.onMessageLoading = { callback($0) }
-        case .answerAborted:
-            events?.onAnswerAborted = { callback($0) }
-        case .sourceChange:
-            events?.onSourceChange = { callback($0) }
-        case .queryTranslated:
-            events?.onQueryTranslated = { callback($0) }
-        case .relatedQueries:
-            events?.onRelatedQueries = { callback($0) }
-        case .newInteractionStarted:
-            events?.onNewInteractionStarted = { callback($0) }
-        case .stateChange:
-            events?.onStateChange = { callback($0) }
+        eventEmitter.on(event.rawValue) { data in
+            callback(data)
         }
-
         return self
     }
 
@@ -177,7 +162,7 @@ class AnswerSession<Doc: Encodable & Decodable> {
                         throw URLError(.badServerResponse)
                     }
 
-                    self.events?.onMessageLoading?(true)
+                    self.eventEmitter.emit("messageLoading", data: true)
                     self.addNewEmptyAssistantMessage()
 
                     var buffer = ""
@@ -199,29 +184,30 @@ class AnswerSession<Doc: Encodable & Decodable> {
                                        let sources = try? JSONDecoder().decode(SearchResults<Doc>.self, from: sourcesData)
                                     {
                                         self.state[currentInteractionIndex].sources = sources
-                                        self.events?.onSourceChange?(sources)
-                                        self.events?.onStateChange?(self.state)
+                                        self.eventEmitter.emit("onSourceChange", data: sources)
+                                        self.eventEmitter.emit("onStateChange", data: self.state)
                                     }
                                 case "query-translated":
                                     if let queryData = parsedMessage.message.data(using: .utf8),
                                        let query = try? JSONDecoder().decode(ClientSearchParams.self, from: queryData)
                                     {
                                         self.state[currentInteractionIndex].translatedQuery = query
-                                        self.events?.onQueryTranslated?(query)
-                                        self.events?.onStateChange?(self.state)
+                                        self.eventEmitter.emit("queryTranslated", data: query)
+                                        self.eventEmitter.emit("stateChange", data: self.state)
                                     }
                                 case "related-queries":
                                     if let queriesData = parsedMessage.message.data(using: .utf8),
                                        let queries = try? JSONDecoder().decode([String].self, from: queriesData)
                                     {
                                         self.state[currentInteractionIndex].relatedQueries = queries
-                                        self.events?.onRelatedQueries?(queries)
-                                        self.events?.onStateChange?(self.state)
+                                        self.eventEmitter.emit("relatedQueries", data: queries)
+                                        self.eventEmitter.emit("stateChange", data: self.state)
                                     }
                                 case "text":
                                     self.state[currentInteractionIndex].response += parsedMessage.message
-                                    self.events?.onMessageChange?(self.messages)
-                                    self.events?.onStateChange?(self.state)
+                                    self.eventEmitter.emit("messageChange", data: self.messages)
+                                    self.eventEmitter.emit("stateChange", data: self.state)
+
                                     continuation.yield(self.state[currentInteractionIndex].response)
                                 default:
                                     break
@@ -236,8 +222,11 @@ class AnswerSession<Doc: Encodable & Decodable> {
                         let index = self.state.firstIndex(where: { $0.interactionId == interactionId })!
                         self.state[index].loading = false
                         self.state[index].aborted = true
-                        self.events?.onAnswerAborted?(true)
-                        self.events?.onStateChange?(self.state)
+
+                        self.eventEmitter.emit("messageLoading", data: false)
+                        self.eventEmitter.emit("onAnswerAborted", data: true)
+                        self.eventEmitter.emit("stateChange", data: self.state)
+
                         continuation.finish()
                     } else {
                         continuation.finish(throwing: error)
@@ -246,8 +235,8 @@ class AnswerSession<Doc: Encodable & Decodable> {
 
                 let index = self.state.firstIndex(where: { $0.interactionId == interactionId })!
                 self.state[index].loading = false
-                self.events?.onStateChange?(self.state)
-                self.events?.onMessageLoading?(false)
+                self.eventEmitter.emit("messageLoading", data: false)
+                self.eventEmitter.emit("stateChange", data: self.state)
                 continuation.finish()
             }
         }
