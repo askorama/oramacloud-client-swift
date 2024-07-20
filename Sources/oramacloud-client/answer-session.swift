@@ -43,7 +43,7 @@ struct AnswerParams<Doc: Codable> {
         let related: Related?
     }
 
-    struct Interaction<T: Decodable & Encodable> {
+    struct Interaction<T: Codable> {
         var interactionId: String
         var query: String
         var response: String
@@ -106,6 +106,20 @@ class AnswerSession<Doc: Codable> {
         inferenceType = params.inferenceType
         endpoint = "\(endpointBaseURL)/v1/answer?api-key=\(params.oramaClient.apiKey)"
         searchEndpoint = params.oramaClient.endpoint
+    }
+
+    public func getState() -> [AnswerParams<Doc>.Interaction<Doc>] {
+        return state
+    }
+
+    public func getMessages() -> [AnswerParams<Doc>.Message] {
+        return messages
+    }
+
+    public func clearSession() -> Void {
+        abortController?.cancel()
+        state = []
+        messages = []
     }
 
     public func on(event: AnswerParams<Doc>.Event, callback: @escaping AnswerParams<Doc>.Events.Callback) -> AnswerSession<Doc> {
