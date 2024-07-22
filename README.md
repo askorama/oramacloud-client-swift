@@ -18,7 +18,7 @@ platform :ios, '10.0'
 use_frameworks!
 
 target '<Your Target Name>' do
-    pod 'OramaCloudClient', '~> 0.0.1'
+    pod 'OramaCloudClient', '~> 0.0.4'
 end
 ```
 
@@ -34,7 +34,7 @@ Add the Orama Cloud repo URL to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/askorama/oramacloud-client-swift.git", from: "0.0.1")
+    .package(url: "https://github.com/askorama/oramacloud-client-swift.git", from: "0.0.4")
 ]
 ```
 

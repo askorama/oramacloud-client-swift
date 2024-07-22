@@ -1,7 +1,7 @@
 Pod::Spec.new do |spec|
   spec.name        = "OramaCloudClient"
   spec.module_name = "OramaCloudClient"
-  spec.version      = "0.0.3"
+  spec.version      = "0.0.4"
   spec.summary      = "Orama Cloud API Client written in Swift."
   spec.homepage     = "https://github.com/askorama/oramacloud-client-swift"
   spec.license      = { :type => "Apache 2.0", :file => "LICENSE.md" }
