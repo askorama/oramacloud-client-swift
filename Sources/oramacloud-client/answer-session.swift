@@ -116,7 +116,7 @@ class AnswerSession<Doc: Codable> {
         return messages
     }
 
-    public func clearSession() -> Void {
+    public func clearSession() {
         abortController?.cancel()
         state = []
         messages = []

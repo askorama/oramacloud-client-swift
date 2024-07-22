@@ -8,6 +8,9 @@ struct E2ETest1Document: Codable {
 let e2eEndpoint = "https://cloud.orama.run/v1/indexes/e2e-index-client-rv4bdd"
 let e2eApiKey = "eaXWAKLxn05lefXAfB3wAhuTq3VaXGqx"
 
+let privateE2eAPIKey = ProcessInfo.processInfo.environment["ORAMA_PRIVATE_API_KEY"] ?? ""
+let privateE2eIndexID = ProcessInfo.processInfo.environment["ORAMA_INDEX_ID"] ?? ""
+
 @available(macOS 12.0, *)
 final class oramacloud_clientTests: XCTestCase {
     struct E2EDoc: Codable {
@@ -113,11 +116,70 @@ final class oramacloud_clientTests: XCTestCase {
 
         wait(for: [expectation], timeout: 60.0)
     }
+
+    func testE2EIndexManager() throws {
+        struct DocumentStruct: Codable {
+            let breed: String
+        }
+
+        func readLocalJSONFile(filename: String) -> Data? {
+            do {
+                if let bundlePath = Bundle(for: type(of: self)).path(forResource: filename, ofType: "json"),
+                   let jsonData = try String(contentsOfFile: bundlePath).data(using: .utf8)
+                {
+                    return jsonData
+                }
+            } catch {
+                print(error)
+            }
+
+            return nil
+        }
+
+        func parseLocalJSON(jsonData: Data) -> [DocumentStruct]? {
+            do {
+                let decodedData = try JSONDecoder().decode([DocumentStruct].self, from: jsonData)
+                return decodedData
+            } catch {
+                print("decode error")
+                return nil
+            }
+        }
+
+        if !privateE2eAPIKey.isEmpty && !privateE2eIndexID.isEmpty {
+            let cloudManager = CloudManager(apiKey: privateE2eAPIKey)
+            let index: CloudManager.IndexManager<DocumentStruct> = cloudManager.index(id: privateE2eIndexID)
+
+            if let localMockFile = readLocalJSONFile(filename: "./mocks/dataset.json"),
+               let documents = parseLocalJSON(jsonData: localMockFile)
+            {
+                Task {
+                    do {
+                        let wasEmptied = try await index.empty()
+                        let wasSnapshotUploaded = try await index.snapshot(documents: documents)
+                        let wasDeploymentTriggered = try await index.deploy()
+
+                        XCTAssertTrue(wasEmptied)
+                        XCTAssertTrue(wasSnapshotUploaded)
+                        XCTAssertTrue(wasDeploymentTriggered)
+                    } catch {
+                        XCTFail("Snapshot failed with error: \(error)")
+                    }
+                }
+            }
+
+        } else {
+            debugPrint("Skipping testE2EIndexManager: ORAMA_PRIVATE_API_KEY and ORAMA_INDEX_ID not set")
+        }
+    }
 }
 
 @available(macOS 12.0, *)
 extension oramacloud_clientTests {
     static var allTests = [
         ("testE2ESearch", testE2ESearch),
+        ("testE2EAnswerSession", testE2EAnswerSession),
+        ("testOnMessageLoading", testOnMessageLoading),
+        ("testAsyncE2EAnswerSession", testAsyncE2EAnswerSession),
     ]
 }
