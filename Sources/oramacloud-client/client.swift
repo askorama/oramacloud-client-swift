@@ -58,7 +58,7 @@ final class OramaClient {
         return try decoder.decode(SearchResults<T>.self, from: data)
     }
 
-    private func encodeSearchQuery(query: ClientSearchParams) throws -> Data {
+    func encodeSearchQuery(query: ClientSearchParams) throws -> Data {
         let encoder = JSONEncoder()
         let jsonData = try encoder.encode(query)
 
