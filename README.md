@@ -18,7 +18,7 @@ platform :ios, '10.0'
 use_frameworks!
 
 target '<Your Target Name>' do
-    pod 'OramaCloudClient', '~> 0.0.4'
+    pod 'OramaCloudClient', '~> 0.0.5'
 end
 ```
 
