@@ -150,27 +150,27 @@ class AnswerSession<Doc: Codable> {
     }
 
     public func regenerateLast(stream: Bool = true) async throws -> MaybeStream {
-        if state.isEmpty || self.messages.isEmpty {
+        if state.isEmpty || messages.isEmpty {
             throw OramaClientError.runtimeError("No messages to regenerate")
         }
 
-        let isLastMessageAssistant = self.messages.last?.role == .assistant
+        let isLastMessageAssistant = messages.last?.role == .assistant
 
         if !isLastMessageAssistant {
             throw OramaClientError.runtimeError("Last message is not an assistant message")
         }
 
-        if self.lastInteractionParams == nil {
+        if lastInteractionParams == nil {
             throw OramaClientError.runtimeError("Cannot find last interaction params")
         }
 
-        self.messages.removeLast()
-        self.state.removeLast()
+        messages.removeLast()
+        state.removeLast()
 
         if stream {
-            return .stream(try await fetchAnswer(params: self.lastInteractionParams!))
+            return try .stream(await fetchAnswer(params: lastInteractionParams!))
         } else {
-            return .string(try await ask(params: self.lastInteractionParams!))
+            return try .string(await ask(params: lastInteractionParams!))
         }
     }
 

@@ -207,6 +207,6 @@ extension oramacloud_clientTests {
         ("testOnMessageLoading", testOnMessageLoading),
         ("testAsyncE2EAnswerSession", testAsyncE2EAnswerSession),
         ("testE2ERegenerateLastAnswer", testE2ERegenerateLastAnswer),
-        ("testE2EIndexManager", testE2EIndexManager)
+        ("testE2EIndexManager", testE2EIndexManager),
     ]
 }
