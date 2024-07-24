@@ -117,6 +117,31 @@ final class oramacloud_clientTests: XCTestCase {
         wait(for: [expectation], timeout: 60.0)
     }
 
+    func testE2ERegenerateLastAnswer() async throws {
+        let expectation = XCTestExpectation(description: "Can correctly regenerate the last answer")
+        var state: [AnswerParams<E2EDoc>.Interaction<E2EDoc>] = []
+
+        do {
+            _ = answerSession.on(event: .stateChange) {
+                state = $0 as! [AnswerParams<E2EDoc>.Interaction<E2EDoc>]
+            }
+
+            let _ = try await answerSession.ask(params: AnswerParams.AskParams(query: "german", userData: nil, related: nil))
+            let _ = try await answerSession.ask(params: AnswerParams.AskParams(query: "labrador", userData: nil, related: nil))
+            let _ = try await answerSession.regenerateLast(stream: false)
+
+            expectation.fulfill()
+            XCTAssertEqual(state.count, 2, "Should contain 2 interactions")
+            XCTAssertEqual(state.last!.query, "labrador", "Second query should be 'labrador'")
+
+            await fulfillment(of: [expectation], timeout: 120.0)
+
+        } catch {
+            XCTFail("Test failed with error: \(error)")
+            expectation.fulfill()
+        }
+    }
+
     func testE2EIndexManager() throws {
         struct DocumentStruct: Codable {
             let breed: String
@@ -181,5 +206,7 @@ extension oramacloud_clientTests {
         ("testE2EAnswerSession", testE2EAnswerSession),
         ("testOnMessageLoading", testOnMessageLoading),
         ("testAsyncE2EAnswerSession", testAsyncE2EAnswerSession),
+        ("testE2ERegenerateLastAnswer", testE2ERegenerateLastAnswer),
+        ("testE2EIndexManager", testE2EIndexManager)
     ]
 }

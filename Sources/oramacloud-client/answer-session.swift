@@ -86,6 +86,12 @@ class AnswerSession<Doc: Codable> {
         let message: String
     }
 
+    enum MaybeStream {
+        case stream(AsyncThrowingStream<String, Error>)
+        case string(String)
+        case error(Error)
+    }
+
     private let eventEmitter = EventEmitter()
     private let endpointBaseURL = "https://answer.api.orama.com"
     private var abortController: Task<Void, Error>?
@@ -98,6 +104,7 @@ class AnswerSession<Doc: Codable> {
     private var messages: [AnswerParams<Doc>.Message]
     private var inferenceType: AnswerParams<Doc>.InferenceType
     private var state: [AnswerParams<Doc>.Interaction<Doc>] = []
+    private var lastInteractionParams: AnswerParams<Doc>.AskParams?
 
     init(params: AnswerParams<Doc>) {
         userContext = params.userContext ?? .string
@@ -142,9 +149,35 @@ class AnswerSession<Doc: Codable> {
         return response
     }
 
+    public func regenerateLast(stream: Bool = true) async throws -> MaybeStream {
+        if state.isEmpty || self.messages.isEmpty {
+            throw OramaClientError.runtimeError("No messages to regenerate")
+        }
+
+        let isLastMessageAssistant = self.messages.last?.role == .assistant
+
+        if !isLastMessageAssistant {
+            throw OramaClientError.runtimeError("Last message is not an assistant message")
+        }
+
+        if self.lastInteractionParams == nil {
+            throw OramaClientError.runtimeError("Cannot find last interaction params")
+        }
+
+        self.messages.removeLast()
+        self.state.removeLast()
+
+        if stream {
+            return .stream(try await fetchAnswer(params: self.lastInteractionParams!))
+        } else {
+            return .string(try await ask(params: self.lastInteractionParams!))
+        }
+    }
+
     private func fetchAnswer(params: AnswerParams<Doc>.AskParams) async throws -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let interactionId = Cuid.generateId()
+            self.lastInteractionParams = params
             self.abortController = Task {
                 do {
                     self.state.append(AnswerParams<Doc>.Interaction(

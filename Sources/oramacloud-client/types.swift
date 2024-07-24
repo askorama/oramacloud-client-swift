@@ -77,3 +77,9 @@ struct SearchRequestPayload: Encodable {
         return jsonObject
     }
 }
+
+// ======================== ERRORS ========================
+
+enum OramaClientError: Error {
+    case runtimeError(String)
+}
